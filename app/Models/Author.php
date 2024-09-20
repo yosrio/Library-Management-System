@@ -38,4 +38,15 @@ class Author extends Model
     {
         return $this->hasMany(Book::class);
     }
+
+    /**
+     * Get birth date
+     *
+     * @param mixed $value
+     * @return void
+     */
+    public function getBirthDateAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('Y-m-d');
+    }
 }

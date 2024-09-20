@@ -38,4 +38,15 @@ class Book extends Model
     {
         return $this->belongsTo(Author::class);
     }
+
+    /**
+     * Get publish date
+     *
+     * @param mixed $value
+     * @return void
+     */
+    public function getPublishDateAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('Y-m-d');
+    }
 }
