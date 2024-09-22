@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Exception;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 /**
  * BookController Class
@@ -26,7 +27,11 @@ class BookController extends Controller
      */
     public function index()
     {
-        $books = Cache::remember('books.all', 3600, fn() => Book::with('author')->get());
+        $books = Cache::remember(
+            'books.all',
+            3600,
+            fn() => Book::select(['id', 'title', 'description', 'publish_date', 'author_id'])->get()
+        );
         return response()->json($books, 200);
     }
 
@@ -49,7 +54,7 @@ class BookController extends Controller
             $book = Book::create($validatedData);
 
             $this->clearBookCache($book->author_id);
-            return response()->json($book, 201);
+            return response()->json($book->makeHidden(['created_at', 'updated_at']), 201);
         } catch (ValidationException $e) {
             return response()->json(['error' => $e->errors()], 422);
         } catch (Exception $e) {
@@ -66,10 +71,10 @@ class BookController extends Controller
     public function show($id)
     {
         try {
-            $book = Cache::remember("book.{$id}", 3600, fn() => Book::with('author')->findOrFail($id));
+            $book = Cache::remember("book.{$id}", 3600, fn() => Book::findOrFail($id)->makeHidden(['created_at', 'updated_at']));
             return response()->json($book, 200);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Buku tidak ditemukan'], 404);
+            return response()->json(['error' => 'Book not found'], 404);
         }
     }
 
@@ -84,6 +89,7 @@ class BookController extends Controller
     {
         try {
             $book = Book::findOrFail($id);
+
             $oldAuthorId = $book->author_id;
 
             $validatedData = $request->validate([
@@ -96,12 +102,13 @@ class BookController extends Controller
             $book->update($validatedData);
 
             $this->clearBookCache($oldAuthorId, $book->author_id, $id);
-            return response()->json($book, 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Book not found'], 404);
+            return response()->json($book->makeHidden(['created_at', 'updated_at']), 200);
         } catch (ValidationException $e) {
             return response()->json(['error' => $e->errors()], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Book not found'], 404);
         } catch (Exception $e) {
+            Log::error($e->getMessage());
             return response()->json(['error' => 'An error occurred while updating the book data'], 500);
         }
     }
@@ -124,6 +131,7 @@ class BookController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Book not found'], 404);
         } catch (Exception $e) {
+            Log::error($e->getMessage());
             return response()->json(['error' => 'An error occurred while deleting the book data'], 500);
         }
     }
@@ -138,7 +146,11 @@ class BookController extends Controller
     {
         try {
             $author = Author::findOrFail($id);
-            $books = Cache::remember("books.author.{$id}", 3600, fn() => $author->books);
+            $books = Cache::remember(
+                "books.author.{$id}",
+                3600,
+                fn() => $author->books()->get(['id', 'title', 'description', 'publish_date'])
+            );
             return response()->json($books, 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Author not found'], 404);

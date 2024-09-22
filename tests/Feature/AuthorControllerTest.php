@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Author;
-use App\Models\Book;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Cache;
@@ -55,7 +54,7 @@ class AuthorControllerTest extends TestCase
         $response = $this->getJson("/authors/{$author->id}");
 
         $response->assertStatus(200)
-            ->assertJson($author->toArray());
+            ->assertJson($author->makeHidden(['created_at', 'updated_at'])->toArray());
     }
 
     public function test_show_returns_404_for_non_existent_author()
@@ -105,7 +104,7 @@ class AuthorControllerTest extends TestCase
     {
         $response = $this->deleteJson('/authors/999');
 
-        $response->assertStatus(500);
+        $response->assertStatus(404);
     }
 
     public function test_index_uses_cache()
@@ -126,12 +125,12 @@ class AuthorControllerTest extends TestCase
 
         Cache::shouldReceive('remember')
             ->once()
-            ->andReturn($author);
+            ->andReturn($author->makeHidden(['created_at', 'updated_at'])->toArray());
 
         $response = $this->getJson("/authors/{$author->id}");
 
         $response->assertStatus(200)
-            ->assertJson($author->toArray());
+            ->assertJson($author->makeHidden(['created_at', 'updated_at'])->toArray());
     }
 
     public function test_store_clears_cache()

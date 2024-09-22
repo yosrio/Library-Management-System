@@ -14,7 +14,7 @@ class BookControllerTest extends TestCase
 
     public function test_index_returns_all_books()
     {
-        $books = Book::factory()->count(5)->create();
+        Book::factory()->count(5)->create();
 
         $response = $this->getJson('/books');
 
@@ -57,7 +57,7 @@ class BookControllerTest extends TestCase
         $response = $this->getJson("/books/{$book->id}");
 
         $response->assertStatus(200)
-            ->assertJson($book->toArray());
+            ->assertJson($book->makeHidden(['created_at', 'updated_at'])->toArray());
     }
 
     public function test_show_returns_404_for_non_existent_book()
